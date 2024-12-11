@@ -1,0 +1,409 @@
+MY8255_A    EQU  0600H
+MY8255_B    EQU  0602H
+MY8255_C    EQU  0604H
+MY8255_CON	EQU  0606H
+
+A8254    EQU  0640H
+B8254    EQU  0642H
+C8254    EQU  0644H
+CON8254  EQU  0646H
+
+SSTACK	SEGMENT STACK
+		DW 16 DUP(?)
+SSTACK	ENDS		
+
+DATA  	SEGMENT
+DTABLE	DB 3FH,06H,5BH,4FH,66H,6DH,7DH,07H
+		DB 7FH,6FH,77H,7CH,39H,5EH,79H,71H,00H
+SWITCH  DB 00H
+DATA  	ENDS
+
+CODE 	SEGMENT
+      	ASSUME CS:CODE,DS:DATA
+START:  MOV AX,0000H        
+    	MOV DS,AX           ;设置数据段地址
+
+		;设置中断向量
+    	MOV AX,OFFSET MIR7
+    	MOV SI,003CH
+    	MOV [SI],AX
+    	MOV AX,CS
+    	MOV SI,003EH
+    	MOV [SI],AX
+
+    	CLI  ;关中断
+		;设置ICW1~ICW4和OCW1
+    	MOV AL, 11H     
+    	OUT 20H, AL
+    	MOV AL, 08H
+    	OUT 21H, AL
+    	MOV AL, 04H
+    	OUT 21H, AL
+    	MOV AL, 07H
+    	OUT 21H, AL
+    	MOV AL, 2FH
+    	OUT 21H, AL
+    	STI  ;关中断
+    	
+    	MOV DX, CON8254			;8254
+		MOV AL, 36H				;计数器0，方式3
+		OUT DX, AL
+		
+		MOV DX, A8254
+		MOV AL, 87H
+		OUT DX, AL
+		MOV AL, 00H;
+		OUT DX, AL
+
+		MOV DX, CON8254			;8254
+		MOV AL, 70H				;计数器1，方式0
+		OUT DX, AL
+
+		MOV AX,DATA
+		MOV DS,AX
+ 		MOV SI,3000H
+		MOV AL,10H
+		MOV [SI],AL				;清显示缓冲
+		MOV AL,10H
+		MOV [SI+1],AL
+		MOV AL,01H
+		MOV [SI+2],AL
+		MOV AL,01H
+		MOV [SI+3],AL
+		MOV AL,00H
+		MOV [SI+4],AL
+		MOV AL,00H
+		MOV [SI+5],AL
+		MOV DI,3005H
+        MOV DX,MY8255_CON		;写8255控制字
+        MOV AL,81H
+		OUT DX,AL
+		
+		;MOV SWITCH,01H
+		;CALL STARTCOUNT
+BEGIN:  
+		CALL DIS				;调用显示子程序
+		CALL CLEAR				;清屏
+		;JMP BEGIN;TEST
+		CALL CCSCAN				;扫描
+		JNZ INK1
+		JMP BEGIN
+INK1:   CALL DIS
+        CALL DALLY
+        CALL DALLY
+        CALL CLEAR
+		CALL CCSCAN
+		JNZ INK2				;有键按下，转到INK2
+		JMP BEGIN
+;========================================
+;确定按下键的位置
+;========================================
+INK2:   MOV CH,0FEH
+		MOV CL,00H
+
+COLUM:  MOV AL,CH
+        MOV DX,MY8255_A 
+		OUT DX,AL
+        MOV DX,MY8255_C 
+		IN AL,DX
+
+L1:     TEST AL,01H         ;is L1?
+        JNZ L2
+
+        MOV AL,00H          ;L1
+		JMP KCODE
+
+L2:     TEST AL,02H         ;is L2?
+        JNZ L3
+
+        MOV AL,04H          ;L2
+        JMP KCODE
+
+L3:     TEST AL,04H         ;is L3?
+        JNZ L4
+
+        MOV AL,08H          ;L3
+		JMP KCODE
+
+L4:     TEST AL,08H         ;is L4?
+        JNZ NEXT
+
+        MOV AL,0CH          ;L4
+
+KCODE:  ADD AL,CL
+		CALL PUTBUF
+
+		PUSH AX
+KON:    CALL DIS
+		CALL CLEAR
+		CALL CCSCAN
+		JNZ KON
+		POP AX
+
+NEXT:   INC CL
+		MOV AL,CH
+		TEST AL,08H
+		JZ KERR
+		ROL AL,1
+		MOV CH,AL
+		JMP COLUM
+KERR:   JMP BEGIN
+;========================================
+;键盘扫描子程序
+;========================================
+CCSCAN: MOV AL,00H
+        MOV DX,MY8255_A  
+		OUT DX,AL
+        MOV DX,MY8255_C 
+        IN  AL,DX
+		NOT AL
+        AND AL,0FH
+		RET
+;========================================
+;清屏子程序
+;========================================
+CLEAR:  MOV DX,MY8255_B 
+        MOV AL,00H
+        OUT DX,AL
+		RET
+;========================================
+;显示子程序
+;========================================
+DIS:    PUSH AX
+		MOV SI,3000H
+		MOV DL,0DFH
+		MOV AL,DL
+AGAIN:  PUSH DX
+        MOV DX,MY8255_A 
+        OUT DX,AL
+        MOV AL,[SI]
+        
+        CMP AL,10H
+        JB NORMAL
+        MOV AL,00H
+        MOV DX,MY8255_B 
+		OUT DX,AL
+        JMP SHOWNEXT
+NORMAL:
+        MOV BX,OFFSET DTABLE
+		AND AX,00FFH
+		ADD BX,AX
+		MOV AL,[BX]
+        MOV DX,MY8255_B 
+		OUT DX,AL
+SHOWNEXT:
+		CALL DALLY
+		INC SI
+        POP DX
+        MOV AL,DL
+		TEST AL,01H
+        JZ  OUT1
+		ROR AL,1
+		MOV DL,AL
+		JMP AGAIN
+OUT1:   POP AX
+		RET
+;====== 延时子程序 ======		
+DALLY:  PUSH CX
+        MOV CX,0006H
+T1:     MOV AX,009FH
+T2:     DEC AX
+		JNZ T2
+		LOOP T1
+		POP CX
+		RET
+		
+DELAY:  PUSH CX
+		PUSH AX
+        MOV CX,0100H
+T1D:    MOV AX,00F0H
+T2D:    DEC AX
+		JNZ T2D
+		LOOP T1D
+		POP AX
+		POP CX
+		RET
+
+
+DELAYSHOW: 
+		PUSH CX
+		PUSH AX
+        MOV CX,0030H
+T1PRO:  MOV AX,009FH
+T2PRO:  DEC AX
+		CALL DIS
+		JNZ T2PRO
+		LOOP T1PRO
+		POP AX
+		POP CX
+		RET
+		
+;========================================
+;存键盘值到相应位的缓冲中
+;========================================
+PUTBUF: 
+		CMP AL,0CH
+		JNE PUTCONTINUE
+		JMP EXIT
+PUTCONTINUE:
+		CMP SWITCH,00H
+		JE PUTTIME
+		CMP AL,0AH
+		JNE BJUDGE
+		MOV SWITCH,00H
+		MOV SI,3000H
+		MOV AL,10H
+		MOV [SI],AL				;清显示缓冲
+		MOV [SI+1],AL
+		MOV AL,00H
+		MOV [SI+2],AL
+		MOV [SI+3],AL
+		MOV [SI+4],AL
+		MOV [SI+5],AL
+		MOV DI,3004H
+		JMP GOBACK
+BJUDGE:
+		CMP AL,0BH
+		JNE GOBACK;INVALID KEY PRESS
+		CMP SWITCH,02H
+		JE CONTINUECOUNTING
+		MOV SWITCH,02H
+		JMP GOBACK
+CONTINUECOUNTING:
+		MOV SWITCH,01H
+		CALL STARTCOUNT
+		JMP GOBACK
+PUTTIME:
+		CMP AL,0AH
+		JNE NORMALPUT
+		MOV SWITCH,01H
+		CALL STARTCOUNT
+		JMP GOBACK
+NORMALPUT:
+		CMP AL,0AH
+		JA GOBACK
+		MOV SI,DI
+		MOV [SI],AL
+		INC DI
+		CMP DI,3006H
+		JNE GOBACK
+		MOV DI,3004H
+GOBACK: RET
+
+
+POS4DEC:
+		PUSH AX
+		PUSH SI
+		MOV SI,3002H
+		MOV AL,[SI]
+		CMP AL,00H;0 借位
+		JNE NORMAL4DEC
+		CALL POS3DEC
+		CMP SWITCH,00H
+		JNE NORMALCOUNT
+		CALL TWINKLE
+		JMP POS4DECRET
+NORMALCOUNT:
+		MOV AL,09H
+		MOV [SI],AL
+		JMP POS4DECRET
+NORMAL4DEC:
+		DEC AL
+		MOV [SI],AL
+POS4DECRET:
+		POP SI
+		POP AX
+		RET
+		
+POS3DEC:
+		PUSH AX
+		PUSH SI
+		MOV SI,3003H
+		MOV AL,[SI]
+		CMP AL,00H;0 借位
+		JNE NORMAL3DEC
+		CALL POS2DEC
+		CMP SWITCH,00H
+		JE POS3DECRET
+		MOV AL,05H
+		MOV [SI],AL
+		JMP POS3DECRET
+NORMAL3DEC:
+		DEC AL
+		MOV [SI],AL
+POS3DECRET:
+		POP SI
+		POP AX
+		RET
+		
+POS2DEC:
+		PUSH AX
+		PUSH SI
+		MOV SI,3004H
+		MOV AL,[SI]
+		CMP AL,00H;0 借位
+		JNE NORMAL2DEC
+		CALL POS1DEC
+		CMP SWITCH,00H
+		JE POS2DECRET
+		MOV AL,09H
+		MOV [SI],AL
+		JMP POS2DECRET
+NORMAL2DEC:
+		DEC AL
+		MOV [SI],AL
+POS2DECRET:
+		POP SI
+		POP AX
+		RET
+		
+POS1DEC:
+		PUSH AX
+		PUSH SI
+		MOV SI,3005H
+		MOV AL,[SI]
+		CMP AL,00H
+		JNE NORMAL1DEC
+		MOV SWITCH,00H
+		JMP POS1DECRET
+NORMAL1DEC:
+		DEC AL
+		MOV [SI],AL
+POS1DECRET:
+		POP SI
+		POP AX
+		RET
+
+TWINKLE:
+		CALL CLEAR
+		CALL DELAY
+		CALL DELAYSHOW
+		CALL CLEAR
+		CALL DELAY
+		CALL DELAYSHOW
+		CALL CLEAR
+		CALL DELAY
+		RET
+
+STARTCOUNT:
+		PUSH DX
+		PUSH AX
+		MOV DX, B8254
+		MOV AL, 87H
+		OUT DX, AL
+		MOV AL, 00H
+		OUT DX, AL
+		POP AX
+		POP DX
+		RET
+
+MIR7:
+		CMP SWITCH,01H
+		JNE MIR7RET
+		CALL POS4DEC
+		CALL STARTCOUNT
+MIR7RET:
+		IRET
+EXIT:
+CODE	ENDS
+		END START

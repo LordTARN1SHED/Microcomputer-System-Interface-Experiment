@@ -1,0 +1,42 @@
+;=========================================================
+; 文件名: A82542.ASM
+; 功能描述: 产生1s方波，输入时钟为1MHz，使用计数器0和1
+;           计数初值均为03E8H
+;=========================================================
+
+A8254    EQU  0600H
+B8254    EQU  0602H
+C8254    EQU  0604H
+CON8254  EQU  0606H
+
+SSTACK	SEGMENT STACK
+		DW 32 DUP(?)
+SSTACK	ENDS
+
+CODE	SEGMENT
+		ASSUME CS:CODE, SS:SSTACK
+START:	MOV DX, CON8254			;8254
+		MOV AL, 36H				;计数器0，方式3
+		OUT DX, AL
+		
+		MOV DX, A8254
+		MOV AL, 0E8H
+		OUT DX, AL
+		MOV AL, 03H
+		OUT DX, AL
+
+		MOV DX, CON8254			;8254
+		MOV AL, 76H				;计数器1，方式3
+		OUT DX, AL
+		
+		MOV DX, B8254
+		MOV AL, 0E8H
+		OUT DX, AL
+		MOV AL, 03H
+		OUT DX, AL
+
+AA1:	NOP
+		JMP AA1
+		
+CODE	ENDS
+		END  START

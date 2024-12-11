@@ -1,0 +1,73 @@
+DTABLE  DB 3FH,06H,5BH,4FH,66H,6DH,7DH,07H,7FH,6FH,77H,7CH,39H,5EH,79H,71H,00H ;0-9，A-F，00H表示不显示
+;在调用显示子程序前一定要建立DTABLE数字,并且要清楚写缓冲中保存有哪些值
+
+MOV SI,3000H
+MOV AL,00H
+MOV [SI],AL
+MOV [SI+1],AL
+MOV [SI+2],AL
+MOV [SI+3],AL
+MOV [SI+4],AL
+MOV [SI+5],AL
+
+MOV DI,3005H
+
+
+;显示子程序
+;这里其实是从X6到X1依次显示的
+;每个数字显示间隔很快 我们会认为是6个数字一起显示 其实是逐个显示
+DIS: 
+    PUSH AX                 
+    MOV SI,3000H
+    MOV DL,0DFH	;1101 1111 ，先输出第6位在最右边，依次往左输
+    MOV AL,DL
+    ;显示[SI]起始的六位数字到数码管，顺序是从右到左
+    ;不能直接将要显示数字输出在A口，必须转换成与之对应的位选信号
+    ;方式是将数字作为位移选择DATABLE中存储的
+AGAIN:  
+    PUSH DX
+    MOV DX,A8255          ;位选信号送A口
+    OUT DX,AL
+    MOV AL,[SI]	;[SI]里存的要输出哪个数字
+    MOV BX,OFFSET DTABLE
+    AND AX,00FFH
+    ADD BX,AX	;OFFSET DTABLE + 哪个数字大小偏移
+    MOV AL,[BX]	;取出这个地址的段码信号
+    MOV DX,B8255           ;段码信号送B口
+    OUT DX,AL
+    CALL DALLY
+    INC SI
+    POP DX
+    MOV AL,DL
+    TEST AL,01H
+    JZ OUT1
+    ROR AL,1                          ;右移1位，输下一个5->4->3->2->1
+    MOV DL,AL
+    JMP AGAIN
+OUT1:  
+    POP AX
+    RET
+;延时子程序
+DALLY:  
+    PUSH CX                
+    MOV CX,0006H
+    T1: MOV AX,009FH
+    T2: DEC AX
+    JNZ T2
+    LOOP T1
+    POP CX
+    RET
+
+
+;清屏子程序
+CLEAR: MOV DX,B8255
+       MOV AL,00H
+       OUT DX,AL
+       RET
+
+
+
+
+
+
+   

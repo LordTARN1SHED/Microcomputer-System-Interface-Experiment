@@ -1,0 +1,45 @@
+.SSTACK	SEGMENT STACK
+		DW 64 DUP(?)
+SSTACK	ENDS
+;8255选择IOY0端口
+A8255A    EQU 0600H;PA端口
+B8255B    EQU 0602H;PB端口
+M8255MODE EQU 0606H;控制寄存器端口
+
+;0809选择IOY1端口
+ADC0809 EQU 0640H
+
+CODE SEGMENT
+	ASSUME CS:CODE 
+
+START:
+	   MOV DX,M8255MODE;控制口,8255初始化
+   	   MOV AL,90H
+	   OUT DX,AL
+	
+AA1:
+	   MOV DX,ADC0809;启动A/D采样
+	   OUT DX,AL
+	
+	   CALL CHECK1
+	   MOV DX,ADC0809;启动A/D采样
+	   IN AL,DX;读A/D采样结果
+	
+	   MOV DX,B8255B
+	   OUT DX,AL;将采样结果送入8255B口，使LED灯亮
+	   JMP AA1
+	
+CHECK1: ;检测转换是否完成
+       MOV DX,A8255A
+       IN AL,DX
+       TEST AL,80H
+       JNZ CHECK1;检测是否开始本次转换
+CHECK2: 
+       MOV DX,A8255A
+       IN AL,DX
+       TEST AL,80H
+       JZ CHECK2;完成一次转换       
+       RET
+
+CODE ENDS
+	END START

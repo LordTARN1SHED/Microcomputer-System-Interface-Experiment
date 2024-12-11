@@ -1,0 +1,236 @@
+MY8255_A    EQU 0600H;PA端口
+MY8255_B    EQU 0602H;PB端口
+MY8255_C    EQU 0604H;PB端口
+MY8255_MODE EQU 0606H;控制寄存器端口
+
+IOY1     EQU  0640H             ;IOY1
+A8254    EQU  IOY1+00H*2
+B8254    EQU  IOY1+01H*2
+C8254    EQU  IOY1+02H*2
+CON8254  EQU  IOY1+03H*2
+
+SSTACK	SEGMENT STACK
+		DW 16 DUP(?)
+SSTACK	ENDS		
+
+DATA  	SEGMENT
+
+BUFFER  DB 4FH,5BH,06H,00H,00H,00H,00H,00H
+
+DATA  	ENDS
+
+CODE 	SEGMENT
+      	ASSUME CS:CODE,DS:DATA
+
+START: 
+
+    MOV BL,00H
+    MOV AX,0000H
+	MOV DS,AX
+    
+    MOV AX, OFFSET MIR6
+    MOV SI, 0038H      
+    MOV [SI], AX       
+    MOV AX, CS         
+    MOV SI, 003AH
+    MOV [SI], AX
+
+    CLI              
+    MOV AL, 11H
+    OUT 20H, AL
+    MOV AL, 08H
+    OUT 21H, AL
+    MOV AL, 04H
+    OUT 21H, AL
+    MOV AL, 07H
+    OUT 21H, AL
+    MOV AL, 2FH
+    OUT 21H, AL
+    STI
+    
+        MOV DX, CON8254         ;8254
+        MOV AL, 36H             ;计数器0,方式3
+        OUT DX, AL
+        MOV DX, A8254
+        MOV AL, 0E8H
+        OUT DX, AL
+        MOV AL, 03H
+        OUT DX, AL
+        MOV DX, CON8254         ;8254
+        MOV AL, 76H             ;计数器1,方式3
+        OUT DX, AL
+        MOV DX, B8254
+        MOV AL, 0E8H
+        OUT DX, AL
+        MOV AL, 03H
+        OUT DX, AL
+    
+        MOV AX,DATA
+		MOV DS,AX
+ 		MOV SI,3000H
+		MOV AL,00H
+		MOV [SI],AL				;清显示缓冲
+		MOV [SI+1],AL
+		MOV [SI+2],AL
+		MOV [SI+3],AL
+		MOV [SI+4],AL
+		MOV [SI+5],AL
+		MOV DI,3005H
+        
+	MOV  DX,MY8255_MODE;通过控制寄存器端口初始化8255
+        MOV  AL,81H
+        OUT  DX,AL
+       	
+	MOV CH,00H
+        
+SHOW1:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,01H
+		AND AX,00FFH
+		ADD BX,AX
+AGAIN1:
+                CMP BX,5
+                JNA NEXT1
+                SUB BX,6
+                JMP AGAIN1
+NEXT1:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0DFH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+
+SHOW2:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,02H
+		AND AX,00FFH
+		ADD BX,AX
+AGAIN2:
+                CMP BX,5
+                JNA NEXT2
+                SUB BX,6
+                JMP AGAIN2
+NEXT2:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0EFH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW3:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,03H
+		AND AX,00FFH
+		ADD BX,AX
+AGAIN3:
+                CMP BX,5
+                JNA NEXT3
+                SUB BX,6
+                JMP AGAIN3
+NEXT3:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0F7H
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW4:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,04H
+		AND AX,00FFH
+		ADD BX,AX
+AGAIN4:
+                CMP BX,5
+                JNA NEXT4
+                SUB BX,6
+                JMP AGAIN4
+NEXT4:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0FBH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW5:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,05H
+		AND AX,00FFH
+		ADD BX,AX
+AGAIN5:
+                CMP BX,5
+                JNA NEXT5
+                SUB BX,6
+                JMP AGAIN5
+NEXT5:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0FDH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW6:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       
+		AND AX,00FFH
+		ADD BX,AX
+AGAIN6:
+                CMP BX,5
+                JNA NEXT6
+                SUB BX,6
+                JMP AGAIN6
+NEXT6:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0FEH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+       INC CL
+       MOV AL,CL
+       CMP AL,20H
+       JNZ X
+       ;INC CH
+X:     JMP SHOW1
+
+DELAY: 
+       CLI
+       PUSH CX
+       MOV  CX,00F0H
+
+AA2:   PUSH AX
+       POP  AX
+	   LOOP AA2
+   	   POP  CX
+   	   STI
+	   RET
+		
+MIR6:
+    
+    INC CH
+    CMP CH,5
+    JNA F
+    SUB DL,6
+F:
+    IRET
+	
+CODE   ENDS
+	   END  START

@@ -1,0 +1,61 @@
+;================================================================================    
+INITIALIZE:
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+    ;设置中断向量
+    MOV AX,0000H
+    MOV DS,AX
+	MOV AX,OFFSET MIR6
+	MOV SI,0038H
+	MOV [SI],AX
+	INC SI
+	INC SI
+	MOV AX,CS
+	MOV [SI],AX
+	
+	CLI 	;关中断
+	MOV AL,11H    
+    OUT 20H, AL    ;命令字ICW1，11H=00010001B
+    MOV AL, 08H
+    OUT 21H, AL    ;命令字ICW2，08H=00001000B
+    MOV AL, 04H
+    OUT 21H, AL    ;命令字ICW3，04H=00000100B
+    MOV AL, 01H
+    OUT 21H, AL    ;命令字ICW4，01H=00000001B
+    MOV AL, 2FH    ;OCW1
+    OUT 21H, AL 
+    STI 
+         
+    MOV AX,DATA
+    MOV DS,AX 
+	
+			
+    ;初始化8254
+
+	MOV DX,0646H
+	MOV AL,76H
+	OUT DX,AL;选定计数器1工作在方式3,并且写入16位数字
+	MOV DX,0642H
+	MOV AL,00H 			;4800
+	OUT DX,AL
+	MOV AL,48H
+	OUT DX,AL
+
+   ;初始化8255
+    MOV DX,CON8255
+    MOV AL,81H
+    OUT DX,AL;设置8255控制字，使得A,B口和C口低四位进行输入
+    MOV DX,A8255
+   
+POP DI
+POP SI
+POP DX
+POP CX
+POP BX
+POP AX
+RET
+;=============================================================

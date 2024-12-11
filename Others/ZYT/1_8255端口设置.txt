@@ -1,0 +1,21 @@
+;接IOY0
+A8255 EQU 0600H
+B8255 EQU 0602H
+C8255 EQU 0604H
+CON8255  EQU 0606H
+
+
+
+;设置控制字
+    MOV DX,CON8255
+    MOV AL,81H   ;AB口输出 C口低四位输入
+    OUT DX,AL        
+
+    MOV DX,CON8255
+    MOV AL,90H   ;A口输入 BC口输出
+    OUT DX,AL
+
+    MOV DX,CON8255
+    MOV AL,89H   ;AB口输出 C口输入
+    OUT DX,AL  
+          

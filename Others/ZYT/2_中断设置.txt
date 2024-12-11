@@ -1,0 +1,28 @@
+ ;设置中断向量
+    MOV AX,0000H
+    MOV DS,AX
+	MOV AX,OFFSET MIR6
+	MOV SI,0038H
+	MOV [SI],AX
+	INC SI
+	INC SI
+	MOV AX,CS
+	MOV [SI],AX
+
+
+
+   CLI 	;关中断
+    MOV AL,11H    
+    OUT 20H, AL    ;命令字ICW1，11H=00010001B
+    MOV AL, 08H
+    OUT 21H, AL    ;命令字ICW2，08H=00001000B
+    MOV AL, 04H
+    OUT 21H, AL    ;命令字ICW3，04H=00000100B
+    MOV AL, 07H
+    OUT 21H, AL    ;命令字ICW4，01H=00000001B
+    MOV AL, 2FH    ;OCW1
+    OUT 21H, AL 
+    STI 
+         
+    MOV AX,DATA ;恢复DS的值
+    MOV DS,AX

@@ -1,0 +1,166 @@
+MY8255_A    EQU 0600H;PA端口
+MY8255_B    EQU 0602H;PB端口
+MY8255_C    EQU 0604H;PB端口
+MY8255_MODE EQU 0606H;控制寄存器端口
+
+SSTACK	SEGMENT STACK
+		DW 16 DUP(?)
+SSTACK	ENDS		
+
+DATA  	SEGMENT
+DTABLE	DB 3FH,06H,5BH,4FH,66H,6DH,7DH,07H
+		DB 7FH,6FH,77H,7CH,39H,5EH,79H,71H
+		
+BUFFER  DB 4FH,5BH,06H,00H,00H,00H,00H,00H
+
+DATA  	ENDS
+
+CODE 	SEGMENT
+      	ASSUME CS:CODE,DS:DATA
+
+START: 
+        MOV AX,DATA
+		MOV DS,AX
+ 		MOV SI,3000H
+		MOV AL,00H
+		MOV [SI],AL				;清显示缓冲
+		MOV [SI+1],AL
+		MOV [SI+2],AL
+		MOV [SI+3],AL
+		MOV [SI+4],AL
+		MOV [SI+5],AL
+		MOV DI,3005H
+        
+		MOV  DX,MY8255_MODE;通过控制寄存器端口初始化8255
+        MOV  AL,81H
+        OUT  DX,AL
+       
+       MOV CH,00H
+        
+SHOW1:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,01H
+		AND AX,00FFH
+		ADD BX,AX
+                CMP BX,5
+                JNA NEXT1
+                SUBB BX,6
+NEXT1:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0DFH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+
+SHOW2:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,02H
+		AND AX,00FFH
+		ADD BX,AX
+                CMP BX,5
+                JNA NEXT2
+                SUBB BX,6
+NEXT2:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0EFH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW3:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,03H
+		AND AX,00FFH
+		ADD BX,AX
+                CMP BX,5
+                JNA NEXT3
+                SUBB BX,6
+NEXT3:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0F7H
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW4:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,04H
+		AND AX,00FFH
+		ADD BX,AX
+                CMP BX,5
+                JNA NEXT4
+                SUBB BX,6
+NEXT4:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0FBH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW5:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       ADD BX,05H
+		AND AX,00FFH
+		ADD BX,AX
+                CMP BX,5
+                JNA NEXT5
+                SUBB BX,6
+NEXT5:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0FDH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+SHOW6:   
+       MOV AL,CH
+       MOV BX,OFFSET BUFFER
+       
+		AND AX,00FFH
+		ADD BX,AX
+                CMP BX,5
+                JNA NEXT6
+                SUBB BX,6
+NEXT6:
+		MOV AL,[BX]
+	   MOV  DX,MY8255_B
+	   OUT  DX,AL
+	   MOV  AL,0FEH
+	   MOV  DX,MY8255_A
+       OUT  DX,AL
+       CALL DELAY
+       
+       INC CL
+       MOV AL,CL
+       CMP AL,10H
+       JNZ X
+       INC CH
+X:     JMP SHOW1
+
+DELAY: PUSH CX
+       MOV  CX,00F0H
+
+AA2:   PUSH AX
+       POP  AX
+	   LOOP AA2
+   	   POP  CX
+	   RET
+		
+CODE   ENDS
+	   END  START
